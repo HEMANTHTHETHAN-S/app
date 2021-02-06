@@ -4,8 +4,10 @@ import socket
 import string
 import subprocess
 from urllib.parse import urlparse
+from typing import List, Tuple, Optional, Any
 
 from dotenv import load_dotenv
+from ast import literal_eval
 
 SHA1 = subprocess.getoutput("git rev-parse HEAD")
 ROOT_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
@@ -18,6 +20,23 @@ def get_abs_path(file_path: str):
         return file_path
     else:
         return os.path.join(ROOT_DIR, file_path)
+
+
+def parse_environment(env_var: str) -> Optional[Any]:
+    """Convert environment string into Python object
+
+    Args:
+        env_var (str): environment constant, example: '["domain1.org", "domain2.com"]'
+
+    Returns:
+        Any
+    """
+    try:
+        return literal_eval(env_var)
+    except Exception as e:
+        print(
+            "Error parsing environment variable %s" % e,
+        )
 
 
 config_file = os.environ.get("CONFIG")
@@ -35,7 +54,7 @@ COLOR_LOG = "COLOR_LOG" in os.environ
 PROMO_CODE = "SIMPLEISBETTER"
 
 # Debug mode
-DEBUG = os.environ["DEBUG"] if "DEBUG" in os.environ else False
+DEBUG = os.environ.get("DEBUG", default=False)
 # Server url
 URL = os.environ["URL"]
 print(">>> URL:", URL)
@@ -50,8 +69,8 @@ SENTRY_FRONT_END_DSN = os.environ.get("SENTRY_FRONT_END_DSN") or SENTRY_DSN
 
 # Email related settings
 NOT_SEND_EMAIL = "NOT_SEND_EMAIL" in os.environ
-EMAIL_DOMAIN = os.environ["EMAIL_DOMAIN"].lower()
-SUPPORT_EMAIL = os.environ["SUPPORT_EMAIL"]
+EMAIL_DOMAIN = os.environ.get("EMAIL_DOMAIN").lower()
+SUPPORT_EMAIL = os.environ.get("SUPPORT_EMAIL")
 SUPPORT_NAME = os.environ.get("SUPPORT_NAME", "Son from SimpleLogin")
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
 
@@ -101,43 +120,36 @@ if "POSTFIX_PORT_FORWARD" in os.environ:
 # Useful when calling Postfix from an external network
 POSTFIX_SUBMISSION_TLS = "POSTFIX_SUBMISSION_TLS" in os.environ
 
-if "OTHER_ALIAS_DOMAINS" in os.environ:
-    OTHER_ALIAS_DOMAINS = eval(
-        os.environ["OTHER_ALIAS_DOMAINS"]
-    )  # ["domain1.com", "domain2.com"]
-else:
-    OTHER_ALIAS_DOMAINS = []
+OTHER_ALIAS_DOMAINS = parse_environment(
+    os.environ.get("OTHER_ALIAS_DOMAINS", default="[]")
+)  # ["domain1.com", "domain2.com"]
 
 # List of domains user can use to create alias
 if "ALIAS_DOMAINS" in os.environ:
-    ALIAS_DOMAINS = eval(os.environ["ALIAS_DOMAINS"])  # ["domain1.com", "domain2.com"]
+    ALIAS_DOMAINS = os.environ.get("ALIAS_DOMAINS", default="").split(
+        ","
+    )  # ["domain1.com", "domain2.com"]
 else:
     ALIAS_DOMAINS = OTHER_ALIAS_DOMAINS + [EMAIL_DOMAIN]
 
 ALIAS_DOMAINS = [d.lower().strip() for d in ALIAS_DOMAINS]
 
-if "PREMIUM_ALIAS_DOMAINS" in os.environ:
-    PREMIUM_ALIAS_DOMAINS = eval(
-        os.environ["PREMIUM_ALIAS_DOMAINS"]
-    )  # ["domain1.com", "domain2.com"]
-else:
-    PREMIUM_ALIAS_DOMAINS = []
+PREMIUM_ALIAS_DOMAINS: List[str] = parse_environment(
+    os.environ.get("PREMIUM_ALIAS_DOMAINS", default="[]")
+)  # ["domain1.com", "domain2.com"]
 
-PREMIUM_ALIAS_DOMAINS = [d.lower().strip() for d in PREMIUM_ALIAS_DOMAINS]
+PREMIUM_ALIAS_DOMAINS = [d.lower().strip() for d in PREMIUM_ALIAS_DOMAINS if d]
 
 # the alias domain used when creating the first alias for user
 FIRST_ALIAS_DOMAIN = os.environ.get("FIRST_ALIAS_DOMAIN") or EMAIL_DOMAIN
 
 # list of (priority, email server)
-EMAIL_SERVERS_WITH_PRIORITY = eval(
-    os.environ["EMAIL_SERVERS_WITH_PRIORITY"]
+EMAIL_SERVERS_WITH_PRIORITY: List[Tuple[int, str]] = parse_environment(
+    os.environ.get("EMAIL_SERVERS_WITH_PRIORITY", default="[]")
 )  # [(10, "email.hostname.")]
 
 # these emails are ignored when computing stats
-if os.environ.get("IGNORED_EMAILS"):
-    IGNORED_EMAILS = eval(os.environ.get("IGNORED_EMAILS"))
-else:
-    IGNORED_EMAILS = []
+IGNORED_EMAILS = os.environ.get("IGNORED_EMAILS", default="").split(",")
 
 # disable the alias suffix, i.e. the ".random_word" part
 DISABLE_ALIAS_SUFFIX = "DISABLE_ALIAS_SUFFIX" in os.environ
@@ -196,17 +208,15 @@ except (KeyError, ValueError):
     PADDLE_YEARLY_PRODUCT_ID = -1
 
 # Other Paddle product IDS
-if "PADDLE_MONTHLY_PRODUCT_IDS" in os.environ:
-    PADDLE_MONTHLY_PRODUCT_IDS = eval(os.environ["PADDLE_MONTHLY_PRODUCT_IDS"])
-else:
-    PADDLE_MONTHLY_PRODUCT_IDS = []
+PADDLE_MONTHLY_PRODUCT_IDS = os.environ.get(
+    "PADDLE_MONTHLY_PRODUCT_IDS", default=""
+).split(",")
 
 PADDLE_MONTHLY_PRODUCT_IDS.append(PADDLE_MONTHLY_PRODUCT_ID)
 
-if "PADDLE_YEARLY_PRODUCT_IDS" in os.environ:
-    PADDLE_YEARLY_PRODUCT_IDS = eval(os.environ["PADDLE_YEARLY_PRODUCT_IDS"])
-else:
-    PADDLE_YEARLY_PRODUCT_IDS = []
+PADDLE_YEARLY_PRODUCT_IDS = os.environ.get(
+    "PADDLE_YEARLY_PRODUCT_IDS", default=""
+).split(",")
 
 PADDLE_YEARLY_PRODUCT_IDS.append(PADDLE_YEARLY_PRODUCT_ID)
 
